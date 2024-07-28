@@ -38,38 +38,8 @@ Welcome to **Naija X**, a vibrant social media platform designed to connect peop
 
 To run Naija X locally, follow these steps:
 
-1. **Clone the repository**:
-    ```bash
-    git clone https://github.com/yourusername/naija-x.git
-    cd naija-x
-    ```
+1. **Clone the repository**
 
-2. **Install dependencies for the backend**:
-    ```bash
-    cd backend
-    npm install
-    ```
-
-3. **Install dependencies for the frontend**:
-    ```bash
-    cd ../frontend
-    npm install
-    ```
-
-4. **Set up environment variables**:
-    Create a `.env` file in the backend directory with the following variables:
-    ```env
-    MONGO_URI=your_mongodb_uri
-    JWT_SECRET=your_jwt_secret
-    ```
-
-5. **Start the development server**:
-    ```bash
-    cd backend
-    npm run dev
-    cd ../frontend
-    npm start
-    ```
 
 ## Usage
 
