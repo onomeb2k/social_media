@@ -48,7 +48,7 @@ def save_user_profile(sender, instance, **kwargs):
 
 
 class Notification(models.Model):
-    # 1 = Like, 2 = Comment, 3 = Follow
+      # 1 = Like, 2 = Comment, 3 = Follow, 4 = DM
     notification_type = models.IntegerField(null=True, blank=True)
     to_user = models.ForeignKey(User, related_name='notification_to', on_delete=models.CASCADE, null=True)
     from_user = models.ForeignKey(User, related_name='notification_from', on_delete=models.CASCADE, null=True)
@@ -56,3 +56,18 @@ class Notification(models.Model):
     comment = models.ForeignKey('Comment', on_delete=models.CASCADE, related_name='+', blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
     user_has_seen = models.BooleanField(default=False)
+    thread = models.ForeignKey('ThreadModel', on_delete=models.CASCADE, related_name='+', blank=True, null=True)
+
+class ThreadModel(models.Model):
+  user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+  receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+  has_unread = models.BooleanField(default=False)
+
+class MessageModel(models.Model):
+  thread = models.ForeignKey('ThreadModel', related_name='+', on_delete=models.CASCADE, blank=True, null=True)
+  sender_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+  receiver_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
+  body = models.CharField(max_length=1000)
+  image = models.ImageField(upload_to='', blank=True, null=True)
+  date = models.DateTimeField(auto_now_add=True)
+  is_read = models.BooleanField(default=False)

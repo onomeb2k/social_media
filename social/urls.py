@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import PostListView, PostDetailView, PostEditView, PostDeleteView, CommentDeleteView, ProfileView, ProfileEditView
 from .views import AddDislike, AddLike, AddFollower, RemoveFollower, UserSearch, ListFollowers, AddCommentLike, AddCommentDislike, CommentReplyView
-from .views import PostNotification, FollowNotification, RemoveNotification
+from .views import PostNotification, FollowNotification, RemoveNotification, ListThreads, CreateMessage, CreateThread, ThreadView, ThreadNotification
 
 urlpatterns = [
     path('', PostListView.as_view(), name='post-list'),
@@ -23,7 +23,11 @@ urlpatterns = [
     path('post/<int:post_pk>/comment/reply/<int:pk>', CommentReplyView.as_view(), name='comment-reply'),
     path('notification/<int:notification_pk>/post/<int:object_pk>', PostNotification.as_view(), name='post-notification'),
     path('notification/<int:notification_pk>/follow/<int:object_pk>', FollowNotification.as_view(), name='follow-notification'),
-    path('notification/delete/<int:notification_pk>', RemoveNotification.as_view(), name='notification-delete')
-
+    path('notification/delete/<int:notification_pk>', RemoveNotification.as_view(), name='notification-delete'),
+    path('inbox/', ListThreads.as_view(), name='inbox'),
+    path('inbox/create-thread', CreateThread.as_view(), name='create-thread'),
+    path('inbox/<int:pk>/', ThreadView.as_view(), name='thread'),
+    path('inbox/<int:pk>/create-message/', CreateMessage.as_view(), name='create-message'),
+    path('notification/<int:notification_pk>/thread/<int:object_pk>', ThreadNotification.as_view(), name='thread-notification'),
 
 ]

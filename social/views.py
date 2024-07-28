@@ -3,11 +3,12 @@ from django.urls import reverse_lazy
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.views import View
 from django.views.generic.edit import UpdateView, DeleteView
-from .models import Post, Comment, UserProfile, Notification
-from .forms import PostForm, CommentForm
+from .models import Post, Comment, UserProfile, Notification, ThreadModel, MessageModel
+from .forms import PostForm, CommentForm, ThreadForm, MessageForm
 from django.http import HttpResponseRedirect
 from django.db.models import Q
-
+from django.contrib import messages
+from django.contrib.auth.models import User
 
 class PostListView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
@@ -293,6 +294,16 @@ class FollowNotification(View):
         notification.user_has_seen = True
         notification.save()
         return redirect('profile', pk=object_pk)   
+    
+class ThreadNotification(View):
+    def get(self, request, notification_pk, object_pk, *args, **kwargs):
+        notification = Notification.objects.get(pk=notification_pk)
+        thread = ThreadModel.objects.get(pk=object_pk)
+
+        notification.user_has_seen = True
+        notification.save()
+
+        return redirect('thread', pk=object_pk)    
 
 class RemoveNotification(View):
     def delete(self, request, notification_pk, *args, **kwargs):
@@ -300,3 +311,71 @@ class RemoveNotification(View):
         notification.user_has_seen = True
         notification.save()
         return HttpResponse('Success', content_type='text/plain')      
+    
+class CreateThread(View):
+  def get(self, request, *args, **kwargs):
+    form = ThreadForm()
+    context = {
+      'form': form
+    }
+    return render(request, 'social/create_thread.html', context)
+
+  def post(self, request, *args, **kwargs):
+    form = ThreadForm(request.POST)
+    username = request.POST.get('username')
+    try:
+        receiver = User.objects.get(username=username)
+        if ThreadModel.objects.filter(user=request.user, receiver=receiver).exists():
+            thread = ThreadModel.objects.filter(user=request.user, receiver=receiver)[0]
+            return redirect('thread', pk=thread.pk)
+        if form.is_valid():
+            sender_thread = ThreadModel(
+            user=request.user,
+            receiver=receiver
+            )
+            sender_thread.save()
+            thread_pk = sender_thread.pk
+
+            return redirect('thread', pk=thread_pk)
+    except:
+        messages.error(request, 'User not found.')
+    return redirect('create-thread') 
+    
+class ListThreads(View):
+    def get(self, request, *args, **kwargs):
+        threads = ThreadModel.objects.filter(Q(user=request.user) | Q(receiver=request.user))
+
+        context = {
+            'threads': threads
+        }
+
+        return render(request, 'social/inbox.html', context)
+    
+class CreateMessage(View):
+    def post(self, request, pk, *args, **kwargs):
+        form = MessageForm(request.POST, request.FILES)
+        thread = ThreadModel.objects.get(pk=pk)
+        if thread.receiver == request.user:
+            receiver = thread.user
+        else:
+            receiver = thread.receiver
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.thread = thread
+            message.sender_user = request.user
+            message.receiver_user = receiver
+            message.save()
+            notification = Notification.objects.create(notification_type=4, from_user=request.user, to_user=receiver, thread=thread)
+        return redirect('thread', pk=pk)
+    
+class ThreadView(View):
+  def get(self, request, pk, *args, **kwargs):
+    form = MessageForm()
+    thread = ThreadModel.objects.get(pk=pk)
+    message_list = MessageModel.objects.filter(thread__pk__contains=pk)
+    context = {
+      'thread': thread,
+      'form': form,
+      'message_list': message_list
+    }
+    return render(request, 'social/thread.html', context)    
