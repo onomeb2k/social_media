@@ -1,10 +1,11 @@
 from django.shortcuts import render,redirect, HttpResponse
+from django.utils import timezone
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.views import View
 from django.views.generic.edit import UpdateView, DeleteView
-from .models import Post, Comment, UserProfile, Notification, ThreadModel, MessageModel
-from .forms import PostForm, CommentForm, ThreadForm, MessageForm
+from .models import Post, Comment, UserProfile, Notification, ThreadModel, MessageModel, Image, Tag
+from .forms import PostForm, CommentForm, ThreadForm, MessageForm, ShareForm, ExploreForm
 from django.http import HttpResponseRedirect
 from django.db.models import Q
 from django.contrib import messages
@@ -14,25 +15,37 @@ class PostListView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         logged_in_user = request.user
         posts = Post.objects.all().order_by('-created_on')
-         
+        share_form = ShareForm()
         form = PostForm()
         context = {
             'post_list': posts,
             'form': form,
+            'shareform': share_form,
         }
         return render(request, 'social/post_list.html', context)
     def post(self, request, *args, **kwargs):
         logged_in_user = request.user
         posts = Post.objects.all().order_by('-created_on')
         form = PostForm(request.POST, request.FILES)
+        files = request.FILES.getlist('image')
+        share_form = ShareForm()  
         if form.is_valid():
             new_post = form.save(commit=False)
             new_post.author = request.user
-            new_post.save()
+            new_post.save()    
+        for f in files:
+            img = Image(image=f)
+            img.save()
+            new_post.image.add(img)
+
+        new_post.create_tags()
+        new_post.save()
+
         context = {
             'post_list': posts,
             'form': form,
-        }
+            'shareform': share_form,
+            }
         return render(request, 'social/post_list.html', context)
 class PostDetailView(LoginRequiredMixin, View):
     def get(self, request, pk, *args, **kwargs):
@@ -53,6 +66,9 @@ class PostDetailView(LoginRequiredMixin, View):
             new_comment.author = request.user
             new_comment.post = post
             new_comment.save()
+            new_comment.create_tags()
+            return redirect('Naija_X:post-detail')
+
         
         comments = Comment.objects.filter(post=post).order_by('-created_on')
         notification = Notification.objects.create(notification_type=2, from_user=request.user, to_user=post.author, post=post)        
@@ -69,7 +85,7 @@ class PostEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     
     def get_success_url(self):
         pk = self.kwargs['pk']
-        return reverse_lazy('post-detail', kwargs={'pk': pk})
+        return reverse_lazy('Naija_X:post-detail', kwargs={'pk': pk})
     
     def test_func(self):
         post = self.get_object()
@@ -77,7 +93,7 @@ class PostEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Post
     template_name = 'social/post_delete.html'
-    success_url = reverse_lazy('post-list')
+    success_url = reverse_lazy('Naija_X:post-list')
     def test_func(self):
         post = self.get_object()
         return self.request.user == post.author
@@ -86,7 +102,7 @@ class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     template_name = 'social/comment_delete.html'
     def get_success_url(self):
         pk = self.kwargs['post_pk']
-        return reverse_lazy('post-detail', kwargs={'pk': pk})
+        return reverse_lazy('Naija_X:post-detail', kwargs={'pk': pk})
     def test_func(self):
         comment = self.get_object()
         return self.request.user == comment.author
@@ -136,7 +152,7 @@ class ProfileEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     
     def get_success_url(self):
         pk = self.kwargs['pk']
-        return reverse_lazy('profile', kwargs={'pk': pk})
+        return reverse_lazy('Naija_X:profile', kwargs={'pk': pk})
     
     def test_func(self):
         profile = self.get_object()
@@ -268,6 +284,7 @@ class CommentReplyView(LoginRequiredMixin, View):
             new_comment.post = post
             new_comment.parent = parent_comment
             new_comment.save()
+            return redirect('Naija_X:post-detail')
         
         comments = Comment.objects.filter(post=post).order_by('-created_on')
         notification = Notification.objects.create(notification_type=2, from_user=request.user, to_user=post.author, post=post)
@@ -277,7 +294,7 @@ class CommentReplyView(LoginRequiredMixin, View):
             'form': form,
             'comments': comments,
         }
-        return redirect('post-detail', pk=post_pk)   
+        return redirect('Naija_X:post-detail', pk=post_pk)   
 
 class PostNotification(View):
     def get(self, request, notification_pk, object_pk, *args, **kwargs):
@@ -285,7 +302,7 @@ class PostNotification(View):
         post = Post.objects.get(pk=object_pk)
         notification.user_has_seen = True
         notification.save()
-        return redirect('post-detail', pk=object_pk)
+        return redirect('Naija_X:post-detail', pk=object_pk)
     
 class FollowNotification(View):
     def get(self, request, notification_pk, object_pk, *args, **kwargs):
@@ -293,7 +310,7 @@ class FollowNotification(View):
         profile = UserProfile.objects.get(pk=object_pk)
         notification.user_has_seen = True
         notification.save()
-        return redirect('profile', pk=object_pk)   
+        return redirect('Naija_X:profile', pk=object_pk)   
     
 class ThreadNotification(View):
     def get(self, request, notification_pk, object_pk, *args, **kwargs):
@@ -303,14 +320,14 @@ class ThreadNotification(View):
         notification.user_has_seen = True
         notification.save()
 
-        return redirect('thread', pk=object_pk)    
+        return redirect('Naija_X:thread', pk=object_pk)    
 
 class RemoveNotification(View):
     def delete(self, request, notification_pk, *args, **kwargs):
         notification = Notification.objects.get(pk=notification_pk)
         notification.user_has_seen = True
         notification.save()
-        return HttpResponse('Success', content_type='text/plain')      
+        return HttpResponse('Naija_X:Success', content_type='text/plain')      
     
 class CreateThread(View):
   def get(self, request, *args, **kwargs):
@@ -327,7 +344,7 @@ class CreateThread(View):
         receiver = User.objects.get(username=username)
         if ThreadModel.objects.filter(user=request.user, receiver=receiver).exists():
             thread = ThreadModel.objects.filter(user=request.user, receiver=receiver)[0]
-            return redirect('thread', pk=thread.pk)
+            return redirect('Naija_X:thread', pk=thread.pk)
         if form.is_valid():
             sender_thread = ThreadModel(
             user=request.user,
@@ -336,7 +353,7 @@ class CreateThread(View):
             sender_thread.save()
             thread_pk = sender_thread.pk
 
-            return redirect('thread', pk=thread_pk)
+            return redirect('Naija_X:thread', pk=thread_pk)
     except:
         messages.error(request, 'User not found.')
     return redirect('create-thread') 
@@ -366,7 +383,7 @@ class CreateMessage(View):
             message.receiver_user = receiver
             message.save()
             notification = Notification.objects.create(notification_type=4, from_user=request.user, to_user=receiver, thread=thread)
-        return redirect('thread', pk=pk)
+        return redirect('Naija_X:thread', pk=pk)
     
 class ThreadView(View):
   def get(self, request, pk, *args, **kwargs):
@@ -379,3 +396,61 @@ class ThreadView(View):
       'message_list': message_list
     }
     return render(request, 'social/thread.html', context)    
+  
+class SharedPostView(View):
+  def post(self, request, pk, *args, **kwargs):
+    original_post = Post.objects.get(pk=pk)
+    form = ShareForm(request.POST)
+    if form.is_valid():
+        new_post = Post(
+        shared_body = self.request.POST.get('body'),
+        body = original_post.body,
+        author = original_post.author,
+        created_on = original_post.created_on,
+        shared_on = timezone.now(),
+        shared_user = request.user
+    )
+    new_post.save()
+    for img in original_post.image.all():
+      new_post.image.add(img),
+    new_post.save()
+    return redirect('Naija_X:post-list')  
+  
+
+class Explore(View):
+  def get(self, request, *args, **kwargs):
+    explore_form = ExploreForm()
+    query = self.request.GET.get('query')
+    tag = Tag.objects.filter(name=query).first()
+    if tag:
+      # filter posts by tag
+      posts = Post.objects.filter(tags__in=[tag])
+    else:
+      # show all posts
+      posts = Post.objects.all()
+      context = {
+      'tag': tag,
+      'posts': posts,
+      'explore_form': explore_form,
+    }
+    return render(request, 'social/explore.html', context)
+  def post(self, request, *args, **kwargs):
+    explore_form = ExploreForm(request.POST)
+    if explore_form.is_valid():
+      query = explore_form.cleaned_data['query']
+      tag = Tag.objects.filter(name=query).first()
+      posts = None
+      if tag:
+        # filter posts by tag
+        posts = Post.objects.filter(tags__in=[tag])
+      if posts:
+        context = {
+          'tag': tag,
+          'posts': posts
+        }
+      else:
+        context = {
+          'tag': tag
+        }
+      return HttpResponseRedirect(f'/social/explore?query={query}')
+    return HttpResponseRedirect('/social/explore/')

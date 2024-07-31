@@ -1,7 +1,10 @@
 from django.urls import path
 from .views import PostListView, PostDetailView, PostEditView, PostDeleteView, CommentDeleteView, ProfileView, ProfileEditView
-from .views import AddDislike, AddLike, AddFollower, RemoveFollower, UserSearch, ListFollowers, AddCommentLike, AddCommentDislike, CommentReplyView
-from .views import PostNotification, FollowNotification, RemoveNotification, ListThreads, CreateMessage, CreateThread, ThreadView, ThreadNotification
+from .views import AddDislike, AddLike, AddFollower, RemoveFollower, UserSearch, ListFollowers, AddCommentLike, AddCommentDislike, CommentReplyView, SharedPostView
+from .views import PostNotification, FollowNotification, RemoveNotification, ListThreads, CreateMessage, CreateThread, ThreadView, ThreadNotification,Explore
+
+
+app_name = "Naija_X"
 
 urlpatterns = [
     path('', PostListView.as_view(), name='post-list'),
@@ -29,5 +32,6 @@ urlpatterns = [
     path('inbox/<int:pk>/', ThreadView.as_view(), name='thread'),
     path('inbox/<int:pk>/create-message/', CreateMessage.as_view(), name='create-message'),
     path('notification/<int:notification_pk>/thread/<int:object_pk>', ThreadNotification.as_view(), name='thread-notification'),
-
+    path('post/<int:pk>/share', SharedPostView.as_view(), name='share-post'),
+    path('explore/', Explore.as_view(), name='explore'),
 ]

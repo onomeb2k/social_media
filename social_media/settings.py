@@ -63,7 +63,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 SITE_ID = 1
-LOGIN_REDIRECT_URL = 'post-list'
+LOGIN_REDIRECT_URL = 'Naija_X:post-list'
 ACCOUNT_EMAIL_REQUIRED = True
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
